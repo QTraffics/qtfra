@@ -10,10 +10,14 @@ func (h FuncHandler) NewError(err error) {
 	h(err)
 }
 
-type JoinHandler struct {
+type JoinError struct {
 	e error
 }
 
-func (j *JoinHandler) NewError(err error) {
+func (j *JoinError) NewError(err error) {
 	j.e = Errors(j.e, err)
+}
+
+func (j *JoinError) Error() string {
+	return j.e.Error()
 }

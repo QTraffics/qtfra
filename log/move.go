@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/QTraffics/qtfra/enhancements/slicelib"
+	"github.com/qtraffics/qtfra/enhancements/slicelib"
 )
 
 type Logger interface {
@@ -89,7 +89,7 @@ var (
 )
 
 func SetDefaultLogger(l Logger) Logger {
-	var old = defaultLogger
+	old := defaultLogger
 	defaultLogger = l
 	return old
 }

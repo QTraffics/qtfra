@@ -3,8 +3,8 @@ package iolib
 import (
 	"io"
 
-	"github.com/QTraffics/qtfra/buf"
-	"github.com/QTraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/buf"
+	"github.com/qtraffics/qtfra/ex"
 )
 
 // Deprecated: use BufWriter instead

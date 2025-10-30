@@ -54,7 +54,6 @@ func newPanicError(v any) error {
 
 // call is an in-flight or completed singleflight.Do call
 type call[T any] struct {
-
 	// These fields are written once before the WaitGroup is done
 	// and are only read after the WaitGroup is done.
 	val T

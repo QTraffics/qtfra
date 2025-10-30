@@ -4,8 +4,8 @@ import (
 	"math"
 	"sync"
 
-	"github.com/QTraffics/qtfra/log"
-	"github.com/QTraffics/qtfra/sys/sysvars"
+	"github.com/qtraffics/qtfra/log"
+	"github.com/qtraffics/qtfra/sys/sysvars"
 )
 
 type Subscriber[V any] interface {
@@ -82,12 +82,12 @@ func (sh *SubHub[V, T]) PublishN(topic T, value V, n int) int {
 
 	sh.access.Lock()
 	defer sh.access.Unlock()
-	if sh.subscribers == nil || len(sh.subscribers) == 0 {
+	if len(sh.subscribers) == 0 {
 		return 0
 	}
 	subscribers := sh.subscribers[topic]
 	n = min(n, len(subscribers))
-	var nn = n
+	nn := n
 	for _, v := range subscribers {
 		if nn <= 0 {
 			break

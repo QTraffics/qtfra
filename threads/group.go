@@ -12,9 +12,9 @@ type taskItem struct {
 	Run  func(ctx context.Context) error
 }
 
-type errTaskSucceed struct{}
+type taskSucceedError struct{}
 
-func (e errTaskSucceed) Error() string {
+func (e taskSucceedError) Error() string {
 	return "task succeed"
 }
 
@@ -55,7 +55,9 @@ func (g *Group) Concurrency(n int) {
 
 func (g *Group) Run(ctx context.Context) error {
 	taskContext, taskFinish := context.WithCancelCause(context.Background())
+	defer taskFinish(taskSucceedError{})
 	taskCancelContext, taskCancel := context.WithCancelCause(ctx)
+	defer taskCancel(taskSucceedError{})
 
 	var errorAccess sync.Mutex
 	var returnError error
@@ -71,8 +73,8 @@ func (g *Group) Run(ctx context.Context) error {
 					taskCount--
 					currentCount := taskCount
 					if currentCount == 0 {
-						taskCancel(errTaskSucceed{})
-						taskFinish(errTaskSucceed{})
+						taskCancel(taskSucceedError{})
+						taskFinish(taskSucceedError{})
 					}
 					errorAccess.Unlock()
 					return
@@ -94,8 +96,8 @@ func (g *Group) Run(ctx context.Context) error {
 			currentCount := taskCount
 			errorAccess.Unlock()
 			if currentCount == 0 {
-				taskCancel(errTaskSucceed{})
-				taskFinish(errTaskSucceed{})
+				taskCancel(taskSucceedError{})
+				taskFinish(taskSucceedError{})
 			}
 			if g.queue != nil {
 				g.queue <- struct{}{}

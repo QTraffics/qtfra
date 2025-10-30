@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/QTraffics/qtfra/ex"
-	"github.com/QTraffics/qtfra/log"
+	"github.com/qtraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/log"
 )
 
 type BuildOption struct {
@@ -44,7 +44,7 @@ func New(opt BuildOption) (log.Handler, error) {
 				file = os.Stderr
 				levelFormatter = log.ColorLevelFormatter
 			default:
-				file, err = os.OpenFile(opt.Output, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+				file, err = os.OpenFile(opt.Output, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o644)
 				if err != nil {
 					return nil, ex.Cause(err, "openfile")
 				}

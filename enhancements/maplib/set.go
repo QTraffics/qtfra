@@ -28,7 +28,7 @@ func (s Set[K]) Contains(k K) bool {
 }
 
 func (s Set[K]) ContainAll(S []K) bool {
-	var contain = true
+	contain := true
 	for i := 0; i < len(S) && contain; i++ {
 		contain = s.Contains(S[i])
 	}

@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"github.com/QTraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/ex"
 )
 
 type LifeCycle interface {

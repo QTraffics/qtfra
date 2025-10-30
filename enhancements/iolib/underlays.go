@@ -4,7 +4,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/QTraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/ex"
 )
 
 type UnderlayConn interface {

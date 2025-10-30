@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QTraffics/qtfra/enhancements/iolib"
-	"github.com/QTraffics/qtfra/log"
-	"github.com/QTraffics/qtfra/sys/sysvars"
+	"github.com/qtraffics/qtfra/enhancements/iolib"
+	"github.com/qtraffics/qtfra/log"
+	"github.com/qtraffics/qtfra/sys/sysvars"
 )
 
 type consoleHandlerState struct {
