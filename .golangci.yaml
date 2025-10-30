@@ -1,8 +1,8 @@
 version: "2"
 run:
   go: "1.25"
-  timeout: "3m"
-  tests: false
+  timeout: "30s"
+  tests: true
   build-tags:
     - sys_debug
 linters:
