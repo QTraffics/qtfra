@@ -16,7 +16,7 @@ func EqualLengthLevelFormatter(l Level) string {
 		if val == 0 {
 			return base
 		}
-		return fmt.Sprintf("%s%+d", base, val)
+		return fmt.Sprintf("%s+%d", base, val)
 	}
 
 	switch {
@@ -36,7 +36,7 @@ func ColorLevelFormatter(l Level) string {
 		if val == 0 {
 			return base
 		}
-		return fmt.Sprintf("%s%+d", base, aurora.Red(val))
+		return fmt.Sprintf("%s+%d", base, aurora.Red(val))
 	}
 
 	switch {

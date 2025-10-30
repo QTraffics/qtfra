@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QTraffics/qtfra/buf"
-	"github.com/QTraffics/qtfra/enhancements/iolib"
-	"github.com/QTraffics/qtfra/enhancements/maplib"
-	"github.com/QTraffics/qtfra/enhancements/slicelib"
-	"github.com/QTraffics/qtfra/ex"
-	"github.com/QTraffics/qtfra/log"
-	"github.com/QTraffics/qtfra/values"
+	"github.com/qtraffics/qtfra/buf"
+	"github.com/qtraffics/qtfra/enhancements/iolib"
+	"github.com/qtraffics/qtfra/enhancements/maplib"
+	"github.com/qtraffics/qtfra/enhancements/slicelib"
+	"github.com/qtraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/log"
+	"github.com/qtraffics/qtfra/values"
 )
 
 var (
@@ -27,11 +27,9 @@ var (
 	internal log.Logger = slog.New(internalHandler)
 )
 
-var (
-	DefaultConsoleHandler log.Handler = NewConsoleHandler(os.Stderr,
-		ConsoleHandlerOption{EnableTime: true, SourceLevel: log.LevelError, Level: log.LevelDebug, LevelFormatter: log.ColorLevelFormatter}).
-		WithAttrs([]slog.Attr{log.NewFixedMetadata("Default")})
-)
+var DefaultConsoleHandler log.Handler = NewConsoleHandler(os.Stderr,
+	ConsoleHandlerOption{EnableTime: true, SourceLevel: log.LevelError, Level: log.LevelDebug, LevelFormatter: log.ColorLevelFormatter}).
+	WithAttrs([]slog.Attr{log.NewFixedMetadata("Default")})
 
 var (
 	space             byte = ' '
@@ -240,7 +238,6 @@ func (h *ConsoleHandler) withAttrs(attrs []slog.Attr) {
 	if len(attrBytes) != 0 {
 		h.preFormatedAttr = bytes.Join(attrBytes, []byte{' '})
 	}
-
 }
 
 func (h *ConsoleHandler) WithGroup(name string) slog.Handler {

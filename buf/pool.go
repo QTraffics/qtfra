@@ -1,8 +1,8 @@
 package buf
 
 import (
-	"github.com/QTraffics/qtfra/enhancements/pool"
-	"github.com/QTraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/enhancements/pool"
+	"github.com/qtraffics/qtfra/ex"
 )
 
 const maxBufferSize = 1 << 16

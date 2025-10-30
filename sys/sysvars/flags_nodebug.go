@@ -1,4 +1,4 @@
-//go:build !node_debug
+//go:build !sys_debug
 
 package sysvars
 

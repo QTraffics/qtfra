@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/QTraffics/qtfra/enhancements/contextlib"
-	"github.com/QTraffics/qtfra/ex"
-	"github.com/QTraffics/qtfra/log"
-	"github.com/QTraffics/qtfra/sys/sysvars"
-	"github.com/QTraffics/qtfra/threads"
-	"github.com/QTraffics/qtfra/values"
+	"github.com/qtraffics/qtfra/enhancements/contextlib"
+	"github.com/qtraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/log"
+	"github.com/qtraffics/qtfra/sys/sysvars"
+	"github.com/qtraffics/qtfra/threads"
+	"github.com/qtraffics/qtfra/values"
 	pshost "github.com/shirou/gopsutil/v4/host"
 	psload "github.com/shirou/gopsutil/v4/load"
 	psmem "github.com/shirou/gopsutil/v4/mem"
@@ -111,7 +111,7 @@ func (c *Collector) Start(ctx context.Context) error {
 			c.hub = &threads.SubHub[*collectTask, int]{}
 		}
 		var group threads.Group
-		var logger = c.logger
+		logger := c.logger
 
 		c.addProducer(&group, "net", func(ct *collectTask) error {
 			counter, err := psnet.IOCounters(false)

@@ -4,9 +4,9 @@ import (
 	"io"
 	"sync"
 
-	"github.com/QTraffics/qtfra/buf"
-	"github.com/QTraffics/qtfra/ex"
-	"github.com/QTraffics/qtfra/threads"
+	"github.com/qtraffics/qtfra/buf"
+	"github.com/qtraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/threads"
 )
 
 type BufWriter struct {
@@ -48,6 +48,9 @@ func (b *BufWriter) WriteString(s string) (n int, err error) {
 		return
 	}
 	err = b.Flush()
+	if err != nil {
+		return n, err
+	}
 	if len(s) >= b.buffer.Cap() {
 		return WriteString(b.underlay, s)
 	}

@@ -1,4 +1,4 @@
-module github.com/QTraffics/qtfra
+module github.com/qtraffics/qtfra
 
 go 1.25.1
 

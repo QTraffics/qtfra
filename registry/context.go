@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/QTraffics/qtfra/values"
+	"github.com/qtraffics/qtfra/values"
 )
 
 func NewServiceContext(ctx context.Context) (context.Context, Registry) {

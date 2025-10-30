@@ -95,7 +95,6 @@ func (alloc *defaultAllocator) Put(buf []byte) error {
 	bits -= 6
 	buf = buf[:cap(buf)]
 
-	//nolint
 	//lint:ignore SA6002 ignore temporarily
 	switch bits {
 	case 0:
@@ -128,6 +127,7 @@ func (alloc *defaultAllocator) Put(buf []byte) error {
 
 // msb return the pos of most significant bit
 func msb(size int) uint16 {
+	//nolint:gosec
 	return uint16(bits.Len32(uint32(size)) - 1)
 }
 

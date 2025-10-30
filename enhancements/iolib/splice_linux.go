@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/QTraffics/qtfra/enhancements/iolib/counter"
+	"github.com/qtraffics/qtfra/enhancements/iolib/counter"
 	"golang.org/x/sys/unix"
 )
 
@@ -91,19 +91,20 @@ func newPipe() *splicePipe {
 	// Set the pipe buffer size to maxSpliceSize to optimize that.
 	// Ignore errors here, as a smaller buffer size will work,
 	// although it will require more system calls.
-	unix.FcntlInt(uintptr(fds[0]), syscall.F_SETPIPE_SZ, maxSpliceSize)
+	_, _ = unix.FcntlInt(uintptr(fds[0]), syscall.F_SETPIPE_SZ, maxSpliceSize)
 
 	return &splicePipe{splicePipeFields: splicePipeFields{rfd: fds[0], wfd: fds[1]}}
 }
 
 // destroyPipe destroys a pipe.
 func destroyPipe(p *splicePipe) {
-	CloseFunc(p.rfd)
-	CloseFunc(p.wfd)
+	_ = CloseFunc(p.rfd)
+	_ = CloseFunc(p.wfd)
 }
 
 func copySplice(source syscall.RawConn, destination syscall.RawConn,
-	readCounters []counter.Func, writeCounters []counter.Func) (handed bool, n int64, err error) {
+	readCounters []counter.Func, writeCounters []counter.Func,
+) (handed bool, n int64, err error) {
 	var pipe *splicePipe
 	pipe, err = getPipe()
 	if err != nil {

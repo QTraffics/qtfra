@@ -90,7 +90,6 @@ func (b *Buffer) Free() {
 		put(b.data)
 	}
 	b.data = nil
-
 }
 
 func (b *Buffer) Bytes() []byte {
