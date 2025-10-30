@@ -12,6 +12,7 @@ import (
 	"github.com/qtraffics/qtfra/sys/sysvars"
 	"github.com/qtraffics/qtfra/threads"
 	"github.com/qtraffics/qtfra/values"
+
 	pshost "github.com/shirou/gopsutil/v4/host"
 	psload "github.com/shirou/gopsutil/v4/load"
 	psmem "github.com/shirou/gopsutil/v4/mem"

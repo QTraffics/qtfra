@@ -19,7 +19,6 @@ linters:
     - exhaustive
     - exptostd
     - gocheckcompilerdirectives
-    - gosec
     - nestif
     - nilerr
     - nolintlint
@@ -38,6 +37,8 @@ linters:
         - -QF1001
         - -QF1003
         - -QF1008
+    nestif:
+      min-complexity: 8
   exclusions:
     generated: lax
     presets:
@@ -57,7 +58,7 @@ formatters:
     gci:
       sections:
         - standard
-        - prefix(github.com/sagernet/)
+        - prefix(github.com/qtraffics/)
         - default
       custom-order: true
   exclusions:
