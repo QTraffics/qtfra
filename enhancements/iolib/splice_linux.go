@@ -103,9 +103,10 @@ func destroyPipe(p *splicePipe) {
 	_ = CloseFunc(p.wfd)
 }
 
-func copySplice(source syscall.RawConn, destination syscall.RawConn,
+func splice(source syscall.RawConn, destination syscall.RawConn,
 	readCounters []counter.Func, writeCounters []counter.Func,
 ) (handed bool, n int64, err error) {
+	handed = true
 	var pipe *splicePipe
 	pipe, err = getPipe()
 	if err != nil {
@@ -126,6 +127,7 @@ func copySplice(source syscall.RawConn, destination syscall.RawConn,
 		for writeSize > 0 {
 			p0, p1 := unix.Splice(pipe.rfd, nil, int(fd), nil, writeSize, unix.SPLICE_F_NONBLOCK|unix.SPLICE_F_MOVE)
 			writeN := int(p0)
+			n += p0
 			writeErr = p1
 			if writeErr != nil {
 				return writeErr != unix.EAGAIN

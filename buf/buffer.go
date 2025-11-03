@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/qtraffics/qtfra/sys/sysvars"
 )
 
 var (
@@ -28,7 +30,11 @@ type Buffer struct {
 }
 
 func New() *Buffer {
-	return NewSize(4096)
+	return NewSize(sysvars.BufferDefaultSize)
+}
+
+func NewHuge() *Buffer {
+	return NewSize(sysvars.BufferDefaultHugeSize)
 }
 
 func NewSize(size int) *Buffer {

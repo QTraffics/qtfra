@@ -11,13 +11,13 @@ func (h FuncHandler) NewError(err error) {
 }
 
 type JoinError struct {
-	e error
+	Err error
 }
 
 func (j *JoinError) NewError(err error) {
-	j.e = Errors(j.e, err)
+	j.Err = Errors(j.Err, err)
 }
 
 func (j *JoinError) Error() string {
-	return j.e.Error()
+	return j.Err.Error()
 }

@@ -6,6 +6,8 @@ import (
 
 	"github.com/qtraffics/qtfra/buf"
 	"github.com/qtraffics/qtfra/ex"
+	"github.com/qtraffics/qtfra/log"
+	"github.com/qtraffics/qtfra/sys/sysvars"
 	"github.com/qtraffics/qtfra/threads"
 )
 
@@ -15,6 +17,11 @@ type BufWriter struct {
 }
 
 func (b *BufWriter) UnderlayWriter() io.Writer {
+	err := b.Flush()
+	if sysvars.DebugEnabled && err != nil {
+		logger := log.GetDefaultLogger()
+		logger.Error("failed to flush buffer when accessing underlay writer", log.AttrError(err))
+	}
 	return b.underlay
 }
 
@@ -155,4 +162,63 @@ func (w *SafeWriter) UnderlayWriter() io.Writer {
 
 func (w *SafeWriter) ThreadSafe() bool {
 	return true
+}
+
+type CacheReader interface {
+	io.Reader
+	ReadCache() (io.Reader, *buf.Buffer)
+}
+
+func PickReaderCache(r io.Reader) (io.Reader, *buf.Buffer) {
+	if cr, ok := r.(CacheReader); ok {
+		rr, buffer := cr.ReadCache()
+		if buffer.Empty() {
+			buffer.Free()
+		}
+		return rr, nil
+	}
+	return r, nil
+}
+
+var (
+	_ io.Reader   = (*BufCachedReader)(nil)
+	_ CacheReader = (*BufCachedReader)(nil)
+)
+
+// BufCachedReader is the default CacheReader implement
+// Note: do not implement underlay.Reader here , Because there a some data still store in cache.
+type BufCachedReader struct {
+	r   io.Reader
+	buf *buf.Buffer
+}
+
+func (b *BufCachedReader) ReadCache() (io.Reader, *buf.Buffer) {
+	return b.r, b.buf
+}
+
+func (b *BufCachedReader) Read(p []byte) (n int, err error) {
+	var offset int
+	if !b.buf.Empty() {
+		offset, err = b.buf.Read(p)
+		// Buffer.Read should only return an error when buffer is empty.
+		if sysvars.DebugEnabled && err != nil {
+			panic("Buffer.Read returned an error when buffer is empty")
+		}
+		if b.buf.Empty() {
+			b.buf.Free()
+		}
+		if offset == len(p) || err != nil {
+			return offset, err
+		}
+	}
+
+	n, err = b.r.Read(p[offset:])
+	return n + offset, err
+}
+
+func NewCacheReader(r io.Reader, buffer *buf.Buffer) io.Reader {
+	if buffer.Empty() {
+		return r
+	}
+	return &BufCachedReader{r: r, buf: buffer}
 }
