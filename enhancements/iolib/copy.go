@@ -15,21 +15,26 @@ func Copy(source io.Reader, destination io.Writer) (n int64, err error) {
 	var (
 		readCounter  []counter.Func
 		writeCounter []counter.Func
-
-		earlyCopied int
-		pureCopied  int64
 	)
 
 	source, readCounter = counter.UnwrapReadCounter(source)
 	destination, writeCounter = counter.UnwrapWriterCounter(destination)
 
-	earlyCopied, err = copyEarly(source, destination, readCounter, writeCounter)
+	return CopyCounters(source, destination, readCounter, writeCounter)
+}
+
+func CopyCounters(source io.Reader, destination io.Writer, readCounters []counter.Func, writeCounters []counter.Func) (n int64, err error) {
+	var (
+		earlyCopied int
+		pureCopied  int64
+	)
+	earlyCopied, err = copyEarly(source, destination, readCounters, writeCounters)
 	n += int64(earlyCopied)
 	if err != nil {
 		return n, ex.Cause(err, "copyEarly")
 	}
 
-	pureCopied, err = copyPure(source, destination, readCounter, writeCounter)
+	pureCopied, err = copyPure(source, destination, readCounters, writeCounters)
 	n += pureCopied
 	if err != nil && !ex.IsMulti(err, io.EOF) {
 		return n, ex.Cause(err, "copyPure")

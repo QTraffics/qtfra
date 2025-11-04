@@ -13,10 +13,6 @@ var (
 	ErrOverflow      = fmt.Errorf("buffer: overflow")
 )
 
-const (
-	MaxManagedSize = int(64*1024) - 1
-)
-
 // Buffer
 // Note: buffer is thread-unsafe
 type Buffer struct {
@@ -44,7 +40,7 @@ func NewSize(size int) *Buffer {
 
 	if size == 0 {
 		return &Buffer{}
-	} else if size > MaxManagedSize {
+	} else if size > sysvars.BufferMaxManagedSize {
 		return &Buffer{
 			data: make([]byte, size),
 			size: size,

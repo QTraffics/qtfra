@@ -3,17 +3,20 @@ package iolib
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"testing"
-	"time"
 
 	"github.com/qtraffics/qtfra/buf"
+	"github.com/qtraffics/qtfra/enhancements/iolib/counter"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func deployTCPWriteServer() (address string, err error) {
+func deployTCPWriteServer() (address net.Listener, err error) {
 	listen, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	handleConn := func(conn net.Conn) {
@@ -43,20 +46,20 @@ func deployTCPWriteServer() (address string, err error) {
 	go func() {
 		for {
 			conn, err := listen.Accept()
-			if err != nil {
-				panic(err)
+			if err != nil || conn == nil {
+				break
 			}
 			go handleConn(conn)
 		}
 	}()
 
-	return listen.Addr().String(), nil
+	return listen, nil
 }
 
-func deployTCPReadServer() (address string, err error) {
+func deployTCPReadServer() (address net.Listener, err error) {
 	listen, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	handleConn := func(conn net.Conn) {
@@ -86,68 +89,143 @@ func deployTCPReadServer() (address string, err error) {
 	go func() {
 		for {
 			conn, err := listen.Accept()
-			if err != nil {
-				panic(err)
+			if err != nil || conn == nil {
+				break
 			}
 			go handleConn(conn)
 		}
 	}()
 
-	return listen.Addr().String(), nil
+	return listen, nil
+}
+
+type zeroReader struct{}
+
+func (r *zeroReader) Read(p []byte) (int, error) {
+	return len(p), nil
+}
+
+type noSpliceReader struct {
+	r io.Reader
+}
+
+func (r *noSpliceReader) Read(p []byte) (n int, err error) {
+	return r.r.Read(p)
 }
 
 func TestCopyConn(t *testing.T) {
-	writeAddress, err := deployTCPWriteServer()
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-	readAddress, err := deployTCPReadServer()
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-	createConn := func(t *testing.T, size uint64) (source net.Conn, destination net.Conn, err error) {
-		sourceConn, err := net.Dial("tcp", writeAddress)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = binary.Write(sourceConn, binary.BigEndian, size)
-		if err != nil {
-			return nil, nil, err
-		}
-		destinationConn, err := net.Dial("tcp", readAddress)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = binary.Write(destinationConn, binary.BigEndian, size)
-		if err != nil {
-			return nil, nil, err
+	const testSize int64 = 1024 * 1024 * 1024
+
+	t.Run("copy conn", func(t *testing.T) {
+		writeAddress, err := deployTCPWriteServer()
+		assert.Nil(t, err, "deployTCPWriteServer")
+		defer writeAddress.Close()
+		readAddress, err := deployTCPReadServer()
+		assert.Nil(t, err, "deployTCPReadServer")
+		defer readAddress.Close()
+		createConn := func(size uint64) (source net.Conn, destination net.Conn, err error) {
+			sourceConn, err := net.Dial("tcp", writeAddress.Addr().String())
+			if err != nil {
+				return nil, nil, err
+			}
+			err = binary.Write(sourceConn, binary.BigEndian, size)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			destinationConn, err := net.Dial("tcp", readAddress.Addr().String())
+			if err != nil {
+				return nil, nil, err
+			}
+			err = binary.Write(destinationConn, binary.BigEndian, size)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return sourceConn, destinationConn, nil
 		}
 
-		return sourceConn, destinationConn, nil
-	}
+		t.Run("no counter", func(t *testing.T) {
+			source, destination, err := createConn(uint64(testSize))
+			assert.Nil(t, err, "createConn")
+			defer source.Close()
+			defer destination.Close()
 
-	t.Run("no counter", func(t *testing.T) {
-		const size uint64 = 1024 * 1024 * 1024 * 4 - 1
-		source, destination, err := createConn(t, size)
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
-		}
-		start := time.Now()
-		n, err := Copy(source, destination)
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
-		}
-		if uint64(n) != size {
-			t.Errorf("n != size, n=%d", n)
-			t.FailNow()
-		}
-		fmt.Println("Consume: ", time.Now().Sub(start))
+			n, err := Copy(source, destination)
+			assert.Nil(t, err)
+			assert.Equalf(t, testSize, n, "testSize != n; n=%d", n)
+		})
+
+		t.Run("with counter", func(t *testing.T) {
+			source, destination, err := createConn(uint64(testSize))
+			assert.Nil(t, err, "createConn")
+			defer source.Close()
+			defer destination.Close()
+			var (
+				readCountN  int64
+				writeCountN int64
+			)
+
+			sourceReader := counter.NewReader(source, []counter.Func{func(n int64) {
+				readCountN += n
+			}})
+			destinationWriter := counter.NewWriter(destination, []counter.Func{func(n int64) {
+				writeCountN += n
+			}})
+			n, err := Copy(sourceReader, destinationWriter)
+
+			assert.Nil(t, err, "Copy")
+			assert.Equalf(t, testSize, n, "testSize != n; n=%d", n)
+			assert.Equalf(t, n, readCountN, "n != readCountN; readCountN=%d", n)
+			assert.Equalf(t, n, writeCountN, "n != writeCountN; writeCountN=%d", n)
+		})
+
+		t.Run("with counter no splice", func(t *testing.T) {
+			source, destination, err := createConn(uint64(testSize))
+			assert.Nil(t, err, "createConn")
+			defer source.Close()
+			defer destination.Close()
+			var (
+				readCountN  int64
+				writeCountN int64
+
+				sourceReader io.Reader = &noSpliceReader{r: source}
+			)
+
+			sourceReader = counter.NewReader(sourceReader, []counter.Func{func(n int64) {
+				readCountN += n
+			}})
+			destinationWriter := counter.NewWriter(destination, []counter.Func{func(n int64) {
+				writeCountN += n
+			}})
+			n, err := Copy(sourceReader, destinationWriter)
+
+			assert.Nil(t, err, "Copy")
+			assert.Equalf(t, testSize, n, "testSize != n; n=%d", n)
+			assert.Equalf(t, n, readCountN, "n != readCountN; readCountN=%d", n)
+			assert.Equalf(t, n, writeCountN, "n != writeCountN; writeCountN=%d", n)
+		})
 	})
-}
 
-func TestCopyFile(t *testing.T) {
+	t.Run("copy common", func(t *testing.T) {
+		t.Run("with counter", func(t *testing.T) {
+			var readCountN int64
+			var writeCountN int64
+
+			var (
+				readCounter = []counter.Func{func(n int64) {
+					readCountN += n
+				}}
+				writeCounter = []counter.Func{func(n int64) {
+					writeCountN += n
+				}}
+			)
+			source := counter.NewReader(io.LimitReader(&zeroReader{}, testSize), readCounter)
+			destination := counter.NewWriter(io.Discard, writeCounter)
+
+			n, err := Copy(source, destination)
+			assert.Nil(t, err)
+			assert.Equalf(t, testSize, n, "testSize != n; n=%d", n)
+		})
+	})
 }
