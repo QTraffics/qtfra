@@ -4,15 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/qtraffics/qtfra/sys/sysvars"
 )
 
 var (
 	ErrNegativeCount = fmt.Errorf("buffer: negative count")
 	ErrOverflow      = fmt.Errorf("buffer: overflow")
-)
-
-const (
-	MaxManagedSize = int(64*1024) - 1
 )
 
 // Buffer
@@ -28,7 +26,11 @@ type Buffer struct {
 }
 
 func New() *Buffer {
-	return NewSize(4096)
+	return NewSize(sysvars.BufferDefaultSize)
+}
+
+func NewHuge() *Buffer {
+	return NewSize(sysvars.BufferDefaultHugeSize)
 }
 
 func NewSize(size int) *Buffer {
@@ -38,7 +40,7 @@ func NewSize(size int) *Buffer {
 
 	if size == 0 {
 		return &Buffer{}
-	} else if size > MaxManagedSize {
+	} else if size > sysvars.BufferMaxManagedSize {
 		return &Buffer{
 			data: make([]byte, size),
 			size: size,

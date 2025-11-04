@@ -1,43 +1,39 @@
 package iolib
 
-import "io"
+import (
+	"io"
 
-type nopReaderCloser struct {
-	r io.Reader
+	"github.com/qtraffics/qtfra/enhancements/iolib/underlay"
+)
+
+type nopReadCloser struct{ r io.Reader }
+
+func (n *nopReadCloser) Read(p []byte) (int, error) { return n.r.Read(p) }
+func (n *nopReadCloser) Close() error               { return nil }
+func (n *nopReadCloser) UnderlayReader() io.Reader  { return n.r }
+
+type nopReadWriteToCloser struct{ r io.Reader }
+
+func (n *nopReadWriteToCloser) Read(p []byte) (int, error) { return n.r.Read(p) }
+func (n *nopReadWriteToCloser) Close() error               { return nil }
+func (n *nopReadWriteToCloser) UnderlayReader() io.Reader  { return n.r }
+func (n *nopReadWriteToCloser) WriteTo(w io.Writer) (int64, error) {
+	return n.r.(io.WriterTo).WriteTo(w)
 }
 
-type nopWriterCloser struct {
-	w io.Writer
-}
+func NopReadCloser(r io.Reader) io.ReadCloser {
+	if _, ok := r.(io.WriterTo); ok {
+		return &nopReadWriteToCloser{r: r}
+	}
 
-func (n *nopReaderCloser) Read(p []byte) (int, error) {
-	return n.r.Read(p)
-}
-
-func (n *nopWriterCloser) Write(p []byte) (int, error) {
-	return n.w.Write(p)
-}
-
-func (n *nopReaderCloser) Close() error {
-	return nil
-}
-
-func (n *nopWriterCloser) Close() error {
-	return nil
-}
-
-func (n *nopWriterCloser) UnderlayWriter() io.Writer {
-	return n.w
-}
-
-func (n *nopReaderCloser) UnderlayReader() io.Reader {
-	return n.r
+	return &nopReadCloser{r: r}
 }
 
 func ReadCloser(r io.Reader) io.ReadCloser {
 	if rc, ok := r.(io.ReadCloser); ok {
 		return rc
 	}
+
 	return readCloser(r, r)
 }
 
@@ -48,16 +44,41 @@ func readCloser(original io.Reader, r io.Reader) io.ReadCloser {
 			io.Closer
 		}{original, c}
 	}
-	if rr, ok := r.(UnderlayReader); ok {
+	if rr, ok := r.(underlay.Reader); ok {
 		return readCloser(original, rr.UnderlayReader())
 	}
-	return &nopReaderCloser{r: original}
+
+	return NopReadCloser(original)
+}
+
+type nopWriteCloser struct{ w io.Writer }
+
+func (n *nopWriteCloser) Write(p []byte) (int, error) { return n.w.Write(p) }
+func (n *nopWriteCloser) Close() error                { return nil }
+func (n *nopWriteCloser) UnderlayWriter() io.Writer   { return n.w }
+
+type nopWriteReadFromCloser struct{ w io.Writer }
+
+func (n *nopWriteReadFromCloser) Write(p []byte) (int, error) { return n.w.Write(p) }
+func (n *nopWriteReadFromCloser) Close() error                { return nil }
+func (n *nopWriteReadFromCloser) UnderlayWriter() io.Writer   { return n.w }
+func (n *nopWriteReadFromCloser) ReadFrom(r io.Reader) (int64, error) {
+	return n.w.(io.ReaderFrom).ReadFrom(r)
+}
+
+func NopWriteCloser(w io.Writer) io.WriteCloser {
+	if _, ok := w.(io.ReaderFrom); ok {
+		return &nopWriteReadFromCloser{w: w}
+	}
+
+	return &nopWriteCloser{w: w}
 }
 
 func WriteCloser(w io.Writer) io.WriteCloser {
 	if wc, ok := w.(io.WriteCloser); ok {
 		return wc
 	}
+
 	return writeCloser(w, w)
 }
 
@@ -68,9 +89,9 @@ func writeCloser(original io.Writer, w io.Writer) io.WriteCloser {
 			io.Closer
 		}{original, c}
 	}
-	if ww, ok := w.(UnderlayWriter); ok {
+	if ww, ok := w.(underlay.Writer); ok {
 		return writeCloser(original, ww.UnderlayWriter())
 	}
 
-	return &nopWriterCloser{w: w}
+	return NopWriteCloser(original)
 }

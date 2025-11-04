@@ -8,6 +8,6 @@ type HandshakeBuffer interface {
 	Handshake(bs []byte) (n int, err error)
 }
 
-type Handshake interface {
+type Handshaker interface {
 	Handshake() error
 }

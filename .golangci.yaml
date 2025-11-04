@@ -11,7 +11,6 @@ linters:
     - errcheck
     - govet
     - ineffassign
-    - paralleltest
     - staticcheck
     - bodyclose
     - errname
@@ -19,11 +18,8 @@ linters:
     - exhaustive
     - exptostd
     - gocheckcompilerdirectives
-    - gosec
-    - nestif
     - nilerr
     - nolintlint
-    - paralleltest
     - tagalign
     - tagliatelle
   settings:
@@ -57,7 +53,7 @@ formatters:
     gci:
       sections:
         - standard
-        - prefix(github.com/sagernet/)
+        - prefix(github.com/qtraffics/)
         - default
       custom-order: true
   exclusions:

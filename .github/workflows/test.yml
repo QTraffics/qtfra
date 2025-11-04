@@ -1,0 +1,30 @@
+name: test
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths-ignore:
+      - ".github/**"
+      - "**.md"
+      - "!.github/workflows/test.yml"
+  pull_request:
+    branches:
+      - main
+      - dev
+jobs:
+  build:
+    name: Build-Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ^1.25
+      - name: Build
+        run: |
+          make test

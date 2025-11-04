@@ -10,6 +10,7 @@ import (
 	"unsafe"
 
 	"github.com/qtraffics/qtfra/enhancements/iolib/counter"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -102,9 +103,10 @@ func destroyPipe(p *splicePipe) {
 	_ = CloseFunc(p.wfd)
 }
 
-func copySplice(source syscall.RawConn, destination syscall.RawConn,
+func splice(source syscall.RawConn, destination syscall.RawConn,
 	readCounters []counter.Func, writeCounters []counter.Func,
 ) (handed bool, n int64, err error) {
+	handed = true
 	var pipe *splicePipe
 	pipe, err = getPipe()
 	if err != nil {
@@ -164,5 +166,6 @@ func copySplice(source syscall.RawConn, destination syscall.RawConn,
 		for _, writeCounter := range writeCounters {
 			writeCounter(int64(readN))
 		}
+		n += int64(readN)
 	}
 }
