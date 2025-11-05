@@ -227,5 +227,37 @@ func TestCopyConn(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equalf(t, testSize, n, "testSize != n; n=%d", n)
 		})
+
+		t.Run("with buffer", func(t *testing.T) {
+			var (
+				readCountN  int64
+				writeCountN int64
+				buffer      = buf.NewHuge()
+			)
+
+			_, _ = buffer.ReadFromOnce(&zeroReader{}) // fill buffer
+			var (
+				readCounter = []counter.Func{func(n int64) {
+					readCountN += n
+				}}
+				writeCounter = []counter.Func{func(n int64) {
+					writeCountN += n
+				}}
+
+				sourceReader      = NewCacheReader(io.LimitReader(&zeroReader{}, testSize), buffer)
+				destinationWriter = io.Discard
+			)
+			defer buffer.Free()
+
+			source := counter.NewReader(sourceReader, readCounter)
+			destination := counter.NewWriter(destinationWriter, writeCounter)
+
+			n, err := Copy(source, destination)
+			assert.Nil(t, err)
+			exceptSize := testSize + int64(buffer.Size())
+			assert.Equalf(t, exceptSize, n, "exceptSize != n; n=%d", n)
+			assert.Equalf(t, exceptSize, readCountN, "exceptSize != readCountN; readCountN=%d", readCountN)
+			assert.Equalf(t, exceptSize, writeCountN, "exceptSize != writeCountN; writeCountN=%d", writeCountN)
+		})
 	})
 }
