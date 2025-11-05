@@ -137,9 +137,9 @@ func (b *Buffer) ReadFromOnce(r io.Reader) (n int, err error) {
 	if b.Full() {
 		return 0, io.ErrShortWrite
 	}
-	nn, err := r.Read(b.FreeBytes())
-	b.w += nn
-	return nn, err
+	n, err = r.Read(b.FreeBytes())
+	b.w += n
+	return
 }
 
 func (b *Buffer) WriteToOnce(w io.Writer) (n int, err error) {

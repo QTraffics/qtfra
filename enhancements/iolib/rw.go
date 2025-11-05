@@ -174,8 +174,9 @@ func PickReaderCache(r io.Reader) (io.Reader, *buf.Buffer) {
 		rr, buffer := cr.ReadCache()
 		if buffer.Empty() {
 			buffer.Free()
+			return rr, nil
 		}
-		return rr, nil
+		return rr, buffer
 	}
 	return r, nil
 }
