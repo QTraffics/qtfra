@@ -3,9 +3,7 @@ package log
 import (
 	"context"
 	"log/slog"
-	"os"
-
-	"github.com/qtraffics/qtfra/enhancements/slicelib"
+	"strings"
 )
 
 type Logger interface {
@@ -24,7 +22,10 @@ type ContextLogger interface {
 	ErrorContext(ctx context.Context, msg string, args ...any)
 }
 
-var _ ContextLogger = (*slog.Logger)(nil)
+var (
+	_ Logger        = (*slog.Logger)(nil)
+	_ ContextLogger = (*slog.Logger)(nil)
+)
 
 type Handler = slog.Handler
 
@@ -41,7 +42,7 @@ func WithAttr(raw Logger, attr ...slog.Attr) Logger {
 	if logger == nil {
 		return raw
 	}
-	return logger.With(slicelib.MapToAny(attr)...)
+	return logger.With(attrsToAny(attr...)...)
 }
 
 func WithGroup(raw Logger, name string) Logger {
@@ -51,16 +52,6 @@ func WithGroup(raw Logger, name string) Logger {
 	}
 	return logger.WithGroup(name)
 }
-
-type Level = slog.Level
-
-const (
-	LevelDebug   = slog.LevelDebug
-	LevelInfo    = slog.LevelInfo
-	LevelWarn    = slog.LevelWarn
-	LevelError   = slog.LevelError
-	LevelDisable = slog.LevelError + 1
-)
 
 func SlogLogger(l Logger) *slog.Logger {
 	if l == nil {
@@ -83,17 +74,44 @@ func GetHandler(l Logger) Handler {
 	return nil
 }
 
-var (
-	defaultLogger Logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
-	NOP           Logger = slog.New(slog.DiscardHandler)
+type Level = slog.Level
+
+const (
+	LevelDebug   = slog.LevelDebug
+	LevelInfo    = slog.LevelInfo
+	LevelWarn    = slog.LevelWarn
+	LevelError   = slog.LevelError
+	LevelDisable = slog.LevelError + 1
 )
 
-func SetDefaultLogger(l Logger) Logger {
-	old := defaultLogger
-	defaultLogger = l
-	return old
+func ParseLevel(s string) (l Level, ok bool) {
+	s = strings.TrimSpace(s)
+	us := strings.ToUpper(s)
+	switch us {
+	case "DEBUG":
+		return LevelDebug, true
+	case "INFO":
+		return LevelInfo, true
+	case "WARN", "WARNING":
+		return LevelWarn, true
+	case "ERROR":
+		return LevelError, true
+	case "OFF", "QUIET", "DISABLED":
+		return LevelDisable, true
+	default:
+		return defaultVal[Level](), false
+	}
 }
 
-func GetDefaultLogger() Logger {
-	return defaultLogger
+func defaultVal[T any]() T {
+	var vv T
+	return vv
+}
+
+func attrsToAny(attrs ...slog.Attr) []any {
+	ans := make([]any, 0, len(attrs))
+	for _, v := range attrs {
+		ans = append(ans, v)
+	}
+	return ans
 }

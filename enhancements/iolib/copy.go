@@ -132,9 +132,6 @@ func copyEarly(source io.Reader, destination io.Writer, readCounter []counter.Fu
 		source, buffer = PickReaderCache(source)
 		if buffer == nil {
 			break
-		} else if buffer.Empty() {
-			buffer.Free()
-			continue
 		}
 
 		earlyCopied, source, err = copyEarly(source, destination, readCounter, writeCounter)
