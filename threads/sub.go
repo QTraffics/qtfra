@@ -132,8 +132,7 @@ func (c *channelSubscriber[V]) publish(v V) {
 	case c.c <- v:
 	default:
 		if sysvars.DebugEnabled {
-			logger := log.GetDefaultLogger()
-			logger.Warn("publish discarded, consider increase the capacity of channel")
+			log.Warn("publish discarded, consider increase the capacity of channel")
 		}
 		// no-op
 	}

@@ -47,7 +47,7 @@ type Collector struct {
 
 func NewCollector(logger log.Logger) *Collector {
 	return &Collector{
-		logger: values.UseDefaultNil(logger, log.GetDefaultLogger()),
+		logger: values.UseDefaultNil(logger, log.Default()),
 	}
 }
 
@@ -71,7 +71,7 @@ func (c *Collector) addProducer(g *threads.Group, name string, fn func(ct *colle
 	g.Append(name, func(ctx context.Context) error {
 		subscribe := c.hub.Subscribe(defaultTopic, defaultChannelQueue)
 		defer subscribe.Unsubscribe()
-		logger := log.WithAttr(c.logger, slog.String("collector", name))
+		logger := log.With(c.logger, slog.String("collector", name))
 		for {
 			select {
 			case <-c.done:

@@ -6,7 +6,13 @@ import (
 	"strings"
 )
 
+type Handler = slog.Handler
+
+// Logger provides a basic implementation for logging, sufficient for most use cases to record information.
+// `Every` custom Logger implementation should adhere to this interface.
+// Additionally, any extensions built upon the basic Logger, such as ContextLogger, should also implement this interface.
 type Logger interface {
+	// Enabled checks if logging is active for the given level in the provided context.
 	Enabled(ctx context.Context, level Level) bool
 	Debug(msg string, args ...any)
 	Info(msg string, args ...any)
@@ -14,12 +20,43 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
+// ContextLogger extends the Logger interface by adding methods that accept a context parameter.
+// This allows for passing additional contextual information to the handler during logging operations,
+// which can be useful for carrying extra details like request IDs or user sessions.
+//
+// Note that slog.Logger implementations should satisfy both Logger and ContextLogger interfaces.
 type ContextLogger interface {
-	Logger
+	Logger // Embeds the base Logger interface.
 	DebugContext(ctx context.Context, msg string, args ...any)
 	InfoContext(ctx context.Context, msg string, args ...any)
 	WarnContext(ctx context.Context, msg string, args ...any)
 	ErrorContext(ctx context.Context, msg string, args ...any)
+}
+
+type UnimplementedContextLogger struct{ Logger }
+
+func (n *UnimplementedContextLogger) DebugContext(ctx context.Context, msg string, args ...any) {
+	n.Logger.Debug(msg, args...)
+}
+
+func (n *UnimplementedContextLogger) InfoContext(ctx context.Context, msg string, args ...any) {
+	n.Logger.Info(msg, args...)
+}
+
+func (n *UnimplementedContextLogger) WarnContext(ctx context.Context, msg string, args ...any) {
+	n.Logger.Warn(msg, args...)
+}
+
+func (n *UnimplementedContextLogger) ErrorContext(ctx context.Context, msg string, args ...any) {
+	n.Logger.Error(msg, args...)
+}
+
+func AsContextLogger(l Logger) ContextLogger {
+	if cl, ok := l.(ContextLogger); ok {
+		return cl
+	}
+
+	return &UnimplementedContextLogger{Logger: l}
 }
 
 var (
@@ -27,51 +64,72 @@ var (
 	_ ContextLogger = (*slog.Logger)(nil)
 )
 
-type Handler = slog.Handler
+type handler interface {
+	Handler() Handler
+}
 
-func New(handler Handler) ContextLogger {
-	return slog.New(handler)
+type with interface {
+	With(...any) Logger
+}
+
+type group interface {
+	WithGroup(string) Logger
+}
+
+func New(handler Handler, opt ...any) ContextLogger {
+	return newFeatureLogger(handler, opt...)
 }
 
 func NewSlog(handler Handler) *slog.Logger {
 	return slog.New(handler)
 }
 
-func WithAttr(raw Logger, attr ...slog.Attr) Logger {
-	logger := SlogLogger(raw)
-	if logger == nil {
-		return raw
-	}
-	return logger.With(attrsToAny(attr...)...)
-}
-
-func WithGroup(raw Logger, name string) Logger {
-	logger := SlogLogger(raw)
-	if logger == nil {
-		return raw
-	}
-	return logger.WithGroup(name)
-}
-
-func SlogLogger(l Logger) *slog.Logger {
-	if l == nil {
-		return nil
-	}
-	if sl, ok := l.(*slog.Logger); ok {
-		return sl
-	}
-	return nil
-}
-
 func GetHandler(l Logger) Handler {
-	type handler interface {
-		Handler() Handler
-	}
-
 	if hh, ok := l.(handler); ok {
 		return hh.Handler()
 	}
 	return nil
+}
+
+func With(l Logger, v ...any) Logger {
+	if len(v) == 0 {
+		return l
+	}
+
+	if ww, ok := l.(with); ok {
+		return ww.With(v...)
+	}
+
+	if ww, ok := l.(*slog.Logger); ok {
+		noOption := make([]any, 0, len(v))
+		for _, vv := range v {
+			switch x := vv.(type) {
+			case Option:
+			default:
+				noOption = append(noOption, x)
+			}
+		}
+		if len(noOption) == 0 {
+			return ww
+		}
+		return ww.With(noOption)
+	}
+	panic("Logger doesn't implement With")
+}
+
+func WithGroup(l Logger, name string) Logger {
+	if len(name) == 0 {
+		return l
+	}
+
+	if ww, ok := l.(group); ok {
+		return ww.WithGroup(name)
+	}
+
+	if ww, ok := l.(*slog.Logger); ok {
+		return ww.WithGroup(name)
+	}
+	panic("Logger doesn't implement group")
 }
 
 type Level = slog.Level
