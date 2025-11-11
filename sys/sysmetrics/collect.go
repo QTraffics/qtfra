@@ -47,7 +47,7 @@ type Collector struct {
 
 func NewCollector(logger log.Logger) *Collector {
 	return &Collector{
-		logger: values.UseDefaultNil(logger, log.Default()),
+		logger: values.UseDefaultNil(logger, log.Logger(log.Default())),
 	}
 }
 

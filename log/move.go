@@ -112,7 +112,7 @@ func With(l Logger, v ...any) Logger {
 		if len(noOption) == 0 {
 			return ww
 		}
-		return ww.With(noOption)
+		return ww.With(noOption...)
 	}
 	panic("Logger doesn't implement With")
 }
