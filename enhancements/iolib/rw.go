@@ -19,8 +19,7 @@ type BufWriter struct {
 func (b *BufWriter) UnderlayWriter() io.Writer {
 	err := b.Flush()
 	if sysvars.DebugEnabled && err != nil {
-		logger := log.GetDefaultLogger()
-		logger.Error("failed to flush buffer when accessing underlay writer", log.AttrError(err))
+		log.Error("failed to flush buffer when accessing underlay writer", log.AttrError(err))
 	}
 	return b.underlay
 }

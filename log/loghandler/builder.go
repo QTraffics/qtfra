@@ -19,6 +19,8 @@ type BuildOption struct {
 	OutputWriter io.Writer `json:"-"`
 }
 
+// New
+// Deprecated: you should build handler by yourself
 func New(opt BuildOption) (log.Handler, error) {
 	var (
 		h   = slog.DiscardHandler

@@ -8,6 +8,7 @@ type Factory struct {
 	handler slog.Handler
 }
 
+// Deprecated: useless
 func NewFactory(handler Handler) *Factory {
 	return &Factory{handler: handler}
 }
