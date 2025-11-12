@@ -31,33 +31,33 @@ func Default() ContextLogger {
 }
 
 func Debug(msg string, v ...any) {
-	Default().Debug(msg, v...)
+	internalLogger.Debug(msg, v...)
 }
 
 func Info(msg string, v ...any) {
-	Default().Info(msg, v...)
+	internalLogger.Info(msg, v...)
 }
 
 func Warn(msg string, v ...any) {
-	Default().Warn(msg, v...)
+	internalLogger.Warn(msg, v...)
 }
 
 func Error(msg string, v ...any) {
-	Default().Error(msg, v...)
+	internalLogger.Error(msg, v...)
 }
 
 func DebugContext(ctx context.Context, msg string, v ...any) {
-	Default().DebugContext(ctx, msg, v...)
+	internalLogger.DebugContext(ctx, msg, v...)
 }
 
 func InfoContext(ctx context.Context, msg string, v ...any) {
-	Default().InfoContext(ctx, msg, v...)
+	internalLogger.InfoContext(ctx, msg, v...)
 }
 
 func WarnContext(ctx context.Context, msg string, v ...any) {
-	Default().WarnContext(ctx, msg, v...)
+	internalLogger.WarnContext(ctx, msg, v...)
 }
 
 func ErrorContext(ctx context.Context, msg string, v ...any) {
-	Default().ErrorContext(ctx, msg, v...)
+	internalLogger.ErrorContext(ctx, msg, v...)
 }
