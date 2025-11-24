@@ -1,7 +1,6 @@
 package iolib
 
 import (
-	"fmt"
 	"io"
 	"syscall"
 
@@ -11,7 +10,9 @@ import (
 	"github.com/qtraffics/qtfra/sys/sysvars"
 )
 
-func Copy(source io.Reader, destination io.Writer) (n int64, err error) {
+var testSpliceTriggered = false
+
+func Copy(destination io.Writer, source io.Reader) (n int64, err error) {
 	var (
 		readCounter  []counter.Func
 		writeCounter []counter.Func
@@ -20,21 +21,21 @@ func Copy(source io.Reader, destination io.Writer) (n int64, err error) {
 	source, readCounter = counter.UnwrapReadCounter(source)
 	destination, writeCounter = counter.UnwrapWriterCounter(destination)
 
-	return CopyCounters(source, destination, readCounter, writeCounter)
+	return CopyCounters(destination, source, writeCounter, readCounter)
 }
 
-func CopyCounters(source io.Reader, destination io.Writer, readCounters []counter.Func, writeCounters []counter.Func) (n int64, err error) {
+func CopyCounters(destination io.Writer, source io.Reader, writeCounters []counter.Func, readCounters []counter.Func) (n int64, err error) {
 	var (
 		earlyCopied int
 		pureCopied  int64
 	)
-	earlyCopied, source, err = copyEarly(source, destination, readCounters, writeCounters)
+	earlyCopied, source, err = copyEarly(destination, source, writeCounters, readCounters)
 	n += int64(earlyCopied)
 	if err != nil {
 		return n, ex.Cause(err, "copyEarly")
 	}
 
-	pureCopied, err = copyPure(source, destination, readCounters, writeCounters)
+	pureCopied, err = copyPure(destination, source, writeCounters, readCounters)
 	n += pureCopied
 	if err != nil && !ex.IsMulti(err, io.EOF) {
 		return n, ex.Cause(err, "copyPure")
@@ -43,7 +44,7 @@ func CopyCounters(source io.Reader, destination io.Writer, readCounters []counte
 	return n, nil
 }
 
-func copyPure(source io.Reader, destination io.Writer, readCounter []counter.Func, writeCounter []counter.Func) (n int64, err error) {
+func copyPure(destination io.Writer, source io.Reader, writeCounters []counter.Func, readCounters []counter.Func) (n int64, err error) {
 	sourceSysConn, sourceIsSysConn := source.(syscall.Conn)
 	destinationSysConn, destinationIsSysConn := destination.(syscall.Conn)
 	if sourceIsSysConn && destinationIsSysConn {
@@ -61,17 +62,20 @@ func copyPure(source io.Reader, destination io.Writer, readCounter []counter.Fun
 			goto genericCopy
 		}
 		var spliceHanded bool
-		spliceHanded, n, err = splice(sourceRawConn, destinationRawConn, readCounter, writeCounter)
+		spliceHanded, n, err = splice(sourceRawConn, destinationRawConn, readCounters, writeCounters)
 		if spliceHanded {
+			// for test only
+			// See: copy_test.go
+			testSpliceTriggered = true
 			return n, err
 		}
 	}
 
 genericCopy:
-	return copyGeneric(source, destination, readCounter, writeCounter)
+	return copyGeneric(destination, source, writeCounters, readCounters)
 }
 
-func copyEarly(source io.Reader, destination io.Writer, readCounter []counter.Func, writeCounter []counter.Func) (n int, _ io.Reader, err error) {
+func copyEarly(destination io.Writer, source io.Reader, writeCounter []counter.Func, readCounter []counter.Func) (n int, _ io.Reader, err error) {
 	if needHandshake, ok := destination.(NeedHandshake); ok && needHandshake.NeedHandshake() {
 		bufferHandshaker, isBufferHandshaker := destination.(HandshakeBuffer)
 		if !isBufferHandshaker {
@@ -79,90 +83,74 @@ func copyEarly(source io.Reader, destination io.Writer, readCounter []counter.Fu
 			if err != nil {
 				return n, source, ex.Cause(err, "handshake")
 			}
-
 		} else {
-			var (
-				handshakeBuffer *buf.Buffer
-				handshakeErr    error
-				handshakeWriteN int
-			)
+			handshakeBuffer := buf.New()
+			defer handshakeBuffer.Free()
 
-			source, handshakeBuffer = PickReaderCache(source)
-			if handshakeBuffer == nil || handshakeBuffer.Empty() {
-				handshakeBuffer = buf.New()
-				handshakeReadN, handshakeReadErr := handshakeBuffer.ReadFromOnce(source)
-				if handshakeReadErr != nil {
-					return n, source, ex.Cause(handshakeReadErr, "handshakeRead")
-				}
-
-				if sysvars.DebugEnabled && handshakeReadN <= 0 {
-					panic(fmt.Sprintf("handshake read zero or negative byte count from reader: %d", handshakeReadN))
-				}
-			}
-
-			handshakeWriteN, handshakeErr = bufferHandshaker.Handshake(handshakeBuffer.Bytes())
-			n += handshakeWriteN
+			handshakeReadN, handshakeReadErr := handshakeBuffer.ReadFromOnce(source)
 
 			for _, c := range readCounter {
-				c(int64(handshakeWriteN))
+				c(int64(handshakeReadN))
 			}
+
+			if handshakeReadErr != nil {
+				return handshakeReadN, source, ex.Cause(handshakeReadErr, "handshake: read")
+			}
+
+			handshakeWriteN, handshakeWriteErr := bufferHandshaker.Handshake(handshakeBuffer.Bytes())
+			n += handshakeWriteN
 
 			for _, c := range writeCounter {
 				c(int64(handshakeWriteN))
 			}
 
-			if handshakeErr != nil {
-				return n, source, ex.Cause(handshakeErr, "handshake")
-			}
-			_, _ = handshakeBuffer.Discard(handshakeWriteN)
-			if handshakeWriteN < handshakeBuffer.Len() || !handshakeBuffer.Empty() {
-				source = NewCacheReader(source, handshakeBuffer)
-			} else {
-				handshakeBuffer.Free()
+			if handshakeWriteErr != nil {
+				return n, source, ex.Cause(handshakeWriteErr, "handshake: write")
 			}
 		}
 	}
 
-	for {
-		var (
-			earlyCopied int
-			buffer      *buf.Buffer
-		)
-
-		source, buffer = PickReaderCache(source)
-		if buffer == nil {
-			break
-		}
-
-		earlyCopied, source, err = copyEarly(source, destination, readCounter, writeCounter)
-		n += earlyCopied
-		if err != nil {
-			// Note: do not wrap this error here, may cause nested error message.
-			return n, source, err
-		}
-
-		to, err := buffer.WriteTo(destination)
+	var buffers []*buf.Buffer
+	source, buffers = PickReaderCacheList(source)
+	if len(buffers) > 0 {
+		defer func() {
+			for len(buffers) > 0 {
+				buffers[0].Free()
+				buffers[0] = nil
+				buffers = buffers[1:]
+			}
+		}()
+	}
+	for len(buffers) > 0 {
+		to, err := buffers[0].WriteTo(destination)
 		n += int(to)
 		if err != nil {
+			buffers[0].Free()
 			return n, source, ex.Cause(err, "writeCache")
 		}
 
 		for _, c := range readCounter {
 			c(to)
 		}
+
 		for _, c := range writeCounter {
 			c(to)
 		}
 
-		if sysvars.DebugEnabled && !buffer.Empty() {
+		if sysvars.DebugEnabled && !buffers[0].Empty() {
+			buffers[0].Free()
 			panic("buffer not WriteTo fully")
 		}
-		buffer.Free()
+
+		// Next
+		buffers[0].Free()
+		buffers[0] = nil
+		buffers = buffers[1:]
 	}
 	return n, source, nil
 }
 
-func copyGeneric(source io.Reader, destination io.Writer, readCounter []counter.Func, writeCounter []counter.Func) (n int64, err error) {
+func copyGeneric(destination io.Writer, source io.Reader, writeCounter []counter.Func, readCounter []counter.Func) (n int64, err error) {
 	buffer := buf.NewHuge()
 	defer buffer.Free()
 

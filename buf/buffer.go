@@ -11,6 +11,7 @@ import (
 var (
 	ErrNegativeCount = fmt.Errorf("buffer: negative count")
 	ErrOverflow      = fmt.Errorf("buffer: overflow")
+	ErrRef           = fmt.Errorf("buffer: refs not clean")
 )
 
 // Buffer
@@ -27,6 +28,10 @@ type Buffer struct {
 
 func New() *Buffer {
 	return NewSize(sysvars.BufferDefaultSize)
+}
+
+func NewMinimal() *Buffer {
+	return NewSize(64)
 }
 
 func NewHuge() *Buffer {
@@ -117,7 +122,6 @@ func (b *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
 			break
 		}
 		if b.Full() {
-			err = io.ErrShortBuffer
 			break
 		}
 		if nn == 0 {
@@ -163,8 +167,11 @@ func (b *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 		nn, err = w.Write(b.Bytes())
 		b.r += nn
 		n += int64(nn)
-		if err != nil || b.Empty() {
+		if err != nil {
 			break
+		}
+		if b.Empty() {
+			return
 		}
 		if nn == 0 {
 			retry++
@@ -268,6 +275,14 @@ func (b *Buffer) Write(bs []byte) (n int, err error) {
 	n = copy(b.FreeBytes(), bs[:])
 	b.w += n
 	return n, nil
+}
+
+func (b *Buffer) Close() error {
+	if b.ref > 0 {
+		return ErrRef
+	}
+	b.Free()
+	return nil
 }
 
 func (b *Buffer) FreeBytes() []byte {
