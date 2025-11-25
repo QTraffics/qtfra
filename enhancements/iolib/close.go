@@ -96,7 +96,6 @@ func writeCloser(original io.Writer, w io.Writer) io.WriteCloser {
 	return NopWriteCloser(original)
 }
 
-
 func Close(v any) error {
 	switch cc := v.(type) {
 	case io.Closer:
