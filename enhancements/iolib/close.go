@@ -95,3 +95,17 @@ func writeCloser(original io.Writer, w io.Writer) io.WriteCloser {
 
 	return NopWriteCloser(original)
 }
+
+
+func Close(v any) error {
+	switch cc := v.(type) {
+	case io.Closer:
+		return cc.Close()
+	case underlay.Writer:
+		return Close(cc.UnderlayWriter())
+	case underlay.Reader:
+		return Close(cc.UnderlayReader())
+	default:
+		return nil
+	}
+}
