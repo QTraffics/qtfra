@@ -11,7 +11,7 @@ fmt_install:
 	go install -v github.com/daixiang0/gci@latest
 
 .PHONY: lint
-lint: fmt_install fmt lint_install
+lint: fmt
 	GOOS=linux golangci-lint run
 
 .PHONY: lint_install
