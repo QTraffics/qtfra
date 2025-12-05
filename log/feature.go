@@ -116,14 +116,16 @@ func (l *featureLogger) With(a ...any) Logger {
 		l2.h = l2.h.WithAttrs(attrs)
 		attrs = []slog.Attr{}
 	}
+	defer flushOptions()
+	defer flushAttrs()
 
 	for _, aa := range a {
 		switch x := aa.(type) {
 		case slog.Attr:
-			flushAttrs()
+			flushOptions()
 			attrs = append(attrs, x)
 		case Option:
-			flushOptions()
+			flushAttrs()
 			options = append(options, x)
 		default:
 			panic(fmt.Sprintf("unsupported type: %T: %v", aa, aa))
